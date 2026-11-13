@@ -1,0 +1,7 @@
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'sha256-6QC1j7gc0c6UeVwFFq79ubmSC+rRMTax5fndWFskar4='; style-src 'sha256-Idam0MxooWE+c77fBK8m/PPTqJQdLQh8+zrrW6NE0fE='; img-src 'self' data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  X-Robots-Tag: noindex, nofollow
