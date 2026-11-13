@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6QC1j7gc0c6UeVwFFq79ubmSC+rRMTax5fndWFskar4='; style-src 'sha256-Idam0MxooWE+c77fBK8m/PPTqJQdLQh8+zrrW6NE0fE='; img-src 'self' data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-f3Rwg7U9fUkSMA+3Zera0IpoHm5y3QEWIgHSgLz8ZFc='; style-src 'sha256-nZReFKMtx0UoqAc55/J1B1tAjCvYJnEzgpCudLOKo90='; img-src 'self' data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#432C93">
@@ -72,6 +72,14 @@ label.f, .f { display: block; font-weight: 600; }
 .in { display: block; width: 100%; min-height: var(--control); padding: var(--s2) var(--s3); border: 1px solid var(--muted); border-radius: var(--r-control); background: var(--white); color: var(--ink); font: 400 16px/1.4 var(--body); }
 select.in { appearance: none; -webkit-appearance: none; padding-right: var(--s8); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23221B35' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 8px; }
 .in[aria-invalid="true"] { border: 2px solid var(--danger); }
+textarea.in { min-height: 96px; resize: vertical; }
+.scope { display: grid; gap: var(--s3); }
+.pay-how { overflow-wrap: anywhere; border: 2px solid var(--gold); border-radius: var(--r-card); padding: var(--s3) var(--s4); }
+.pay-how > * + * { margin-top: var(--s2); }
+.pay-choice { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pay-choice legend { font-weight: 600; margin-bottom: var(--s1); padding: 0; }
+.check input[type="radio"] { width: 24px; height: 24px; accent-color: var(--violet); flex: none; }
+.scope .lbl { font-size: 14px; color: var(--muted); font-weight: 600; }
 .err { color: var(--danger); font-weight: 600; margin-top: var(--s1); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--s2); }
@@ -101,6 +109,11 @@ details > * + * { margin-top: var(--s3); }
 .chip.accepted { background: var(--ok); color: var(--white); }
 .chip.declined { border-color: var(--muted); color: var(--muted); }
 .chip.expired { background: var(--gold); }
+.chip.paid { background: var(--ink); color: var(--white); }
+.due { border-left: 4px solid var(--gold); }
+.pay-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.pay-row > span { flex: 1; min-width: 0; }
+.pay-row .btn { width: auto; flex: none; padding-right: 0; }
 .h1row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 
 .notice { margin: var(--s4) auto 0; max-width: 688px; width: calc(100% - 2 * var(--gutter)); background: var(--gold); border-radius: var(--r-card); padding: var(--s4); }
@@ -139,6 +152,7 @@ details > * + * { margin-top: var(--s3); }
 .sheet-foot { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: var(--s4); }
 .sheet-foot p + p { margin-top: var(--s1); }
 
+@media (max-width: 359px) { .card { padding: var(--s3); } }
 @media (min-width: 900px) {
   :root { --gutter: 24px; }
   .top { padding-left: var(--s8); padding-right: var(--s8); }
@@ -229,22 +243,25 @@ const QTW = (() => {
   function blankState() {
     return { app: APP, version: VERSION,
       settings: { business: { name: "Phoenix Applications & Automations", owner: "Casim Bahadar", email: "phoenixapplicationsdev@gmail.com", website: "https://casimbahadar.github.io/" },
-        hstRegistered: false, hstNumber: "", termsDays: "10", validDays: "30", depositPct: "", priceList: [] },
+        hstRegistered: false, hstNumber: "", termsDays: "10", validDays: "30", depositPct: "", followUpDays: "10", quoteFollowUpDays: "5", etPct: "3", etEmail: "phoenixapplicationsdev@gmail.com", priceList: [] },
       counters: {}, quotes: [], nextId: 1, lastBackupAt: "", lastAcceptedAt: "" };
   }
+  const blankPayments = () => ({ invoiceSentOn: "", depositFollowUpOn: "", depositReceivedOn: "", paidOn: "", lastFollowUpOn: "" });
   const blankClient = () => ({ name: "", business: "", email: "", phone: "", street: "", city: "", province: "ON", postal: "", country: "Canada" });
   function newQuote(state, today) {
     const s = clone(state), set = s.settings;
-    const q = { id: s.nextId++, number: "", status: "draft", date: today, validDays: set.validDays, title: "", client: blankClient(), lines: [],
-      discountPct: "", depositPct: set.depositPct, hstOn: !!set.hstRegistered, hstNumber: set.hstRegistered ? set.hstNumber : "",
-      termsDays: set.termsDays, acceptedOn: "", finishDate: "", dueDate: "", clientDeleted: false };
+    const q = { id: s.nextId++, number: "", status: "draft", date: today, validDays: set.validDays, title: "", client: blankClient(), lines: [], scopeIn: "", scopeOut: "",
+      discountPct: "", depositPct: set.depositPct, etPct: set.etPct, hstOn: !!set.hstRegistered, hstNumber: set.hstRegistered ? set.hstNumber : "",
+      termsDays: set.termsDays, finishedOn: "", acceptedOn: "", finishDate: "", dueDate: "", payBy: "", ...blankPayments(), clientDeleted: false };
     s.quotes.push(q);
     return { state: s, id: q.id };
   }
   const find = (state, id) => state.quotes.find(q => q.id === id);
 
   // The whole quote, worked out in cents. HST is charged once, on the subtotal after any discount, and only when the quote says so.
-  function compute(q) {
+  // method "card" or "etransfer". Left out: an accepted quote uses the way the client said they will pay; anything else is the card price.
+  // The e-Transfer discount comes off after any quote discount and before HST, the same as Wave's own invoice discount.
+  function compute(q, method) {
     const lines = (q.lines || []).map(l => {
       const qty = toMilli(l.qty), price = toCents(l.price);
       return { desc: String(l.desc || "").trim(), unit: l.unit || "each", qty, price, total: qty === null || price === null ? null : mulDiv(qty, price, 1000) };
@@ -252,11 +269,13 @@ const QTW = (() => {
     const subtotal = lines.reduce((s, l) => s + (l.total === null ? 0 : l.total), 0);
     const dPct = toPct(q.discountPct), depPct = toPct(q.depositPct);
     const discount = dPct === null ? 0 : mulDiv(subtotal, dPct, 10000);
-    const taxable = subtotal - discount;
+    const etPct = toPct(q.etPct) || 0, m = method || (q.status === "accepted" && q.payBy === "etransfer" ? "etransfer" : "card");
+    const etDiscount = m === "etransfer" ? mulDiv(subtotal - discount, etPct, 10000) : 0;
+    const taxable = subtotal - discount - etDiscount;
     const hst = q.hstOn ? mulDiv(taxable, HST_RATE, 100) : 0;
     const total = taxable + hst;
     const deposit = depPct === null ? 0 : mulDiv(total, depPct, 10000);
-    return { lines, subtotal, discountPct: dPct, discount, taxable, hstOn: !!q.hstOn, hst, total, depositPct: depPct, deposit, balance: total - deposit,
+    return { lines, subtotal, discountPct: dPct, discount, method: m, etPct, etDiscount, taxable, hstOn: !!q.hstOn, hst, total, depositPct: depPct, deposit, balance: total - deposit,
       validUntil: isDate(q.date) && isInt(q.validDays, 1, 365) ? addDays(q.date, Number(q.validDays)) : null };
   }
 
@@ -268,6 +287,8 @@ const QTW = (() => {
     if (!String(c.name || "").trim() && !String(c.business || "").trim()) e.name = "Enter the client's name or their business name.";
     if (String(c.email || "").trim() && !EMAIL.test(String(c.email).trim())) e.email = "This email address doesn't look right. Check it or leave it empty.";
     if (!String(q.title || "").trim()) e.title = "Say what the quote is for in a few words.";
+    if (String(q.scopeIn || "").length > 2000) e.scopeIn = "Keep this under 2,000 characters.";
+    if (String(q.scopeOut || "").length > 2000) e.scopeOut = "Keep this under 2,000 characters.";
     const lines = q.lines || [];
     if (!lines.length) e.lines = "Add at least one line item.";
     lines.forEach((l, i) => {
@@ -296,6 +317,10 @@ const QTW = (() => {
     const dep = toPct(set.depositPct);
     if (dep === null || dep > 10000) e.depositPct = "Enter a deposit from 0 to 100%, or leave it empty.";
     if (set.hstRegistered && !HST_NUMBER.test(String(set.hstNumber || "").trim())) e.hstNumber = "Enter your HST registration number, like 123456789 RT0001.";
+    if (!isInt(set.followUpDays, 1, 90)) e.followUpDays = "Enter a number of days from 1 to 90.";
+    const et = toPct(set.etPct); if (et === null || et > 1000) e.etPct = "Enter a discount from 0 to 10%, or 0 to offer none.";
+    if (String(set.etEmail || "").trim() && !EMAIL.test(String(set.etEmail).trim())) e.etEmail = "This email address doesn't look right.";
+    if (!isInt(set.quoteFollowUpDays, 1, 60)) e.quoteFollowUpDays = "Enter a number of days from 1 to 60.";
     return e;
   }
   function validatePriceItem(p) {
@@ -307,7 +332,7 @@ const QTW = (() => {
   }
 
   // Drafts follow the HST setting. A finished quote keeps the HST it was finished with.
-  function syncDraft(q, set) { if (q.status === "draft") { q.hstOn = !!set.hstRegistered; q.hstNumber = set.hstRegistered ? set.hstNumber : ""; q.termsDays = set.termsDays; } return q; }
+  function syncDraft(q, set) { if (q.status === "draft") { q.hstOn = !!set.hstRegistered; q.hstNumber = set.hstRegistered ? set.hstNumber : ""; q.termsDays = set.termsDays; q.etPct = set.etPct; } return q; }
   const numberFor = (year, n) => "Q-" + year + "-" + String(n).padStart(3, "0");
 
   // Finishing a draft is the only place a number is given out. One counter per year, never reused, never skipped.
@@ -318,14 +343,14 @@ const QTW = (() => {
     const errors = validate(q, today);
     if (Object.keys(errors).length) return { ok: false, errors };
     const year = q.date.slice(0, 4), n = (s.counters[year] || 0) + 1;
-    s.counters[year] = n; q.number = numberFor(year, n); q.status = "sent";
+    s.counters[year] = n; q.number = numberFor(year, n); q.status = "sent"; q.finishedOn = today;
     return { ok: true, state: s, number: q.number };
   }
   // A finished quote is locked. Changing it means copying it to a new draft, which gets its own number when finished.
   function copyToDraft(state, id, today) {
     const src = find(state, id); if (!src || src.clientDeleted) return { ok: false };
     const r = newQuote(state, today), q = find(r.state, r.id);
-    q.title = src.title; q.client = clone(src.client); q.lines = clone(src.lines); q.discountPct = src.discountPct; q.depositPct = src.depositPct;
+    q.title = src.title; q.client = clone(src.client); q.lines = clone(src.lines); q.discountPct = src.discountPct; q.depositPct = src.depositPct; q.scopeIn = src.scopeIn || ""; q.scopeOut = src.scopeOut || "";
     return { ok: true, state: r.state, id: r.id };
   }
   function deleteDraft(state, id) {
@@ -336,6 +361,7 @@ const QTW = (() => {
   }
   // What the list shows. A sent quote past its valid-until date reads as expired.
   function shownStatus(q, today) {
+    if (q.status === "accepted" && q.paidOn) return "paid";
     if (q.status === "sent" && isDate(q.date) && isInt(q.validDays, 1, 365) && dayNum(today) > dayNum(addDays(q.date, Number(q.validDays)))) return "expired";
     return q.status;
   }
@@ -343,14 +369,26 @@ const QTW = (() => {
   function setStatus(state, id, to, o) {
     const s = clone(state), q = find(s, id);
     if (!q || !(MOVES[q.status] || []).includes(to)) return { ok: false, errors: { status: "That change isn't allowed." } };
+    if (q.status === "accepted" && q.invoiceSentOn) return { ok: false, errors: { status: "Undo the invoice and payment marks first." } };
     if (to === "accepted") {
-      if (!isDate(o.finishDate)) return { ok: false, errors: { finishDate: "Choose the date you expect to finish the work." } };
-      if (dayNum(o.finishDate) < dayNum(o.today)) return { ok: false, errors: { finishDate: "The finish date can't be before today." } };
-      q.acceptedOn = o.today; q.finishDate = o.finishDate; q.dueDate = addBusinessDays(o.finishDate, Number(q.termsDays));
+      const errors = {}, offered = (toPct(q.etPct) || 0) > 0, payBy = o.payBy === undefined ? "card" : o.payBy;
+      if (offered && payBy !== "card" && payBy !== "etransfer") errors.payBy = "Choose how the client will pay.";
+      if (!isDate(o.finishDate)) errors.finishDate = "Choose the date you expect to finish the work.";
+      else if (dayNum(o.finishDate) < dayNum(o.today)) errors.finishDate = "The finish date can't be before today.";
+      if (Object.keys(errors).length) return { ok: false, errors };
+      q.payBy = offered ? payBy : "card";
+      Object.assign(q, blankPayments()); q.acceptedOn = o.today; q.finishDate = o.finishDate; q.dueDate = addBusinessDays(o.finishDate, Number(q.termsDays));
       s.lastAcceptedAt = o.now;
-    } else { q.acceptedOn = ""; q.finishDate = ""; q.dueDate = ""; }
+    } else { q.acceptedOn = ""; q.finishDate = ""; q.dueDate = ""; q.payBy = ""; Object.assign(q, blankPayments()); }
     q.status = to;
     return { ok: true, state: s };
+  }
+  // The payment method can change until the invoice goes out, because the invoice is built from it.
+  function setPayBy(state, id, payBy) {
+    const s = clone(state), q = find(s, id);
+    if (!q || q.status !== "accepted" || !(toPct(q.etPct) > 0) || (payBy !== "card" && payBy !== "etransfer")) return { ok: false, errors: { payBy: "That change isn't allowed." } };
+    if (q.invoiceSentOn) return { ok: false, errors: { payBy: "The invoice has gone out. Undo the invoice mark first." } };
+    q.payBy = payBy; return { ok: true, state: s };
   }
   function setDueDate(state, id, date) {
     const s = clone(state), q = find(s, id);
@@ -359,13 +397,105 @@ const QTW = (() => {
     q.dueDate = date; return { ok: true, state: s };
   }
 
+  // --- after acceptance: the invoice goes out from Wave, then the deposit and the balance come in.
+  const PAY_MARKS = { invoiceSent: "invoiceSentOn", depositReceived: "depositReceivedOn", paid: "paidOn" };
+  // Records the day something happened. An empty date clears the mark. Dates can't be in the future or before the acceptance.
+  function markPayment(state, id, which, date, o) {
+    const s = clone(state), q = find(s, id), field = PAY_MARKS[which];
+    if (!q || !field || q.status !== "accepted") return { ok: false, errors: { [which]: "Only an accepted quote can be marked." } };
+    if (which === "depositReceived" && compute(q).deposit === 0) return { ok: false, errors: { depositReceived: "This quote has no deposit." } };
+    if (date === "") {
+      if (which === "invoiceSent" && (q.depositReceivedOn || q.paidOn)) return { ok: false, errors: { invoiceSent: "Undo the payment marks first." } };
+      q[field] = ""; if (which === "invoiceSent") q.depositFollowUpOn = "";
+      return { ok: true, state: s };
+    }
+    if (!isDate(date)) return { ok: false, errors: { [which]: "Choose a date." } };
+    if (dayNum(date) < dayNum(q.acceptedOn)) return { ok: false, errors: { [which]: "The date can't be before the quote was accepted, " + longDate(q.acceptedOn) + "." } };
+    if (dayNum(date) > dayNum(o.today)) return { ok: false, errors: { [which]: "The date can't be in the future." } };
+    if (which !== "invoiceSent" && !q.invoiceSentOn) return { ok: false, errors: { [which]: "Mark the invoice as sent first." } };
+    q[field] = date;
+    // The deposit follow-up date is fixed when the invoice is marked sent, so changing the setting later doesn't move it.
+    if (which === "invoiceSent") q.depositFollowUpOn = addDays(date, Number(s.settings.followUpDays));
+    s.lastAcceptedAt = o.now;
+    return { ok: true, state: s };
+  }
+  // What to chase today. The deposit: from its follow-up date until it is received or the balance falls due.
+  // The balance: from the day after its due date until the invoice is marked paid in full.
+  // What to chase today. A sent quote: from N days after it was finished until it expires.
+  // The deposit: from its follow-up date until it is received or the balance falls due.
+  // The balance: from the day after its due date until the invoice is marked paid in full.
+  // "I followed up" puts an item away for the same number of days, then it comes back if nothing has changed.
+  function followUps(state, today) {
+    const t = dayNum(today), set = state.settings, out = [];
+    state.quotes.forEach(q => {
+      const later = (start, days) => Math.max(start, isDate(q.lastFollowUpOn) ? dayNum(q.lastFollowUpOn) + days : start);
+      const c = compute(q);
+      if (q.status === "sent") {
+        const base = isDate(q.finishedOn) ? q.finishedOn : q.date, days = Number(set.quoteFollowUpDays);
+        if (!isDate(base) || !c.validUntil || t > dayNum(c.validUntil)) return;
+        const from = later(dayNum(base) + days, days);
+        if (t >= from) out.push({ id: q.id, kind: "quote", since: iso(from), amount: c.total, depositOwed: false });
+        return;
+      }
+      if (q.status !== "accepted" || !q.invoiceSentOn || q.paidOn || !isDate(q.dueDate)) return;
+      const depositOwed = c.deposit > 0 && !q.depositReceivedOn, days = Number(set.followUpDays);
+      if (!depositOwed && c.balance === 0) return; // a 100% deposit that has arrived leaves nothing to chase
+      if (t > dayNum(q.dueDate)) { const from = later(dayNum(q.dueDate) + 1, days); if (t >= from) out.push({ id: q.id, kind: "balance", since: iso(from), amount: depositOwed ? c.total : c.balance, depositOwed }); }
+      else if (depositOwed && isDate(q.depositFollowUpOn)) { const from = later(dayNum(q.depositFollowUpOn), days); if (t >= from) out.push({ id: q.id, kind: "deposit", since: iso(from), amount: c.deposit, depositOwed }); }
+    });
+    return out.sort((a, b) => a.since < b.since ? -1 : a.since > b.since ? 1 : a.id - b.id);
+  }
+  function markFollowedUp(state, id, today) {
+    const s = clone(state), q = find(s, id);
+    if (!q || (q.status !== "sent" && q.status !== "accepted")) return { ok: false };
+    q.lastFollowUpOn = today; return { ok: true, state: s };
+  }
+  function followUpMessage(q, f, set) {
+    const first = String(q.client.name || "").trim().split(/\s+/)[0] || "there";
+    if (f.kind === "quote") return "Hi " + first + ", just checking in on quote " + q.number + " for " + String(q.title).trim().replace(/\.$/, "") + ", which I sent on " + longDate(isDate(q.finishedOn) ? q.finishedOn : q.date) + ". It's valid until " + longDate(compute(q).validUntil) + ". If you have any questions or would like anything changed, reply to this message and I'll help. " + signoff(set);
+    const what = f.kind === "deposit" ? "the deposit of " + money(f.amount) + ", which was due when you accepted the quote"
+      : (f.depositOwed ? "the invoice total of " + money(f.amount) : (compute(q).deposit > 0 ? "the balance of " + money(f.amount) : "the invoice total of " + money(f.amount))) + ", which was due on " + longDate(q.dueDate);
+    return "Hi " + first + ", a quick reminder about the invoice for " + String(q.title).trim().replace(/\.$/, "") + " (quote " + q.number + "), sent on " + longDate(q.invoiceSentOn) + ". It shows " + what + ". If you've already paid, thank you, and please ignore this. If you have any questions, reply to this message. " + signoff(set);
+  }
+  // A calendar file with an all-day reminder for each follow-up. It names only the quote number, so no client details reach a synced calendar.
+  function followUpCalendar(q, nowIso) {
+    const c = compute(q), stamp = nowIso.replace(/[-:]/g, "").replace(/\.\d+/, "").slice(0, 15) + "Z", ev = [];
+    const d8 = d => d.replace(/-/g, "");
+    const add = (key, date, summary) => ev.push(["BEGIN:VEVENT", "UID:" + q.number + "-" + key + "@quote-to-wave", "DTSTAMP:" + stamp, "DTSTART;VALUE=DATE:" + d8(date), "DTEND;VALUE=DATE:" + d8(addDays(date, 1)),
+      "SUMMARY:" + summary, "DESCRIPTION:Open Quote to Wave for the details and the message.", "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + summary, "TRIGGER:PT9H", "END:VALARM", "END:VEVENT"].join("\r\n"));
+    if (c.deposit > 0 && q.depositFollowUpOn && !q.depositReceivedOn) add("deposit", q.depositFollowUpOn, "Check deposit for " + q.number);
+    if (isDate(q.dueDate)) add("balance", addDays(q.dueDate, 1), "Check payment for " + q.number);
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Phoenix Applications and Automations//Quote to Wave//EN", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n") + "\r\n";
+  }
+
+  // An early warning only. Counts accepted quotes, before HST and after any discount, by the quarter of the invoice date.
+  // The CRA test is taxable revenue over $30,000 in one calendar quarter or over four consecutive calendar quarters.
+  const QUARTER_NAMES = ["January to March", "April to June", "July to September", "October to December"];
+  function hstWatch(state, today) {
+    const qi = d => Number(d.slice(0, 4)) * 4 + Math.floor((Number(d.slice(5, 7)) - 1) / 3);
+    const now = qi(today), amounts = {};
+    state.quotes.forEach(q => { if (q.status !== "accepted") return; const d = isDate(q.invoiceSentOn) ? q.invoiceSentOn : q.acceptedOn; if (!isDate(d)) return; const k = qi(d); amounts[k] = (amounts[k] || 0) + compute(q).taxable; });
+    const quarters = [3, 2, 1, 0].map(back => { const k = now - back; return { label: QUARTER_NAMES[k % 4] + " " + Math.floor(k / 4), amount: amounts[k] || 0 }; });
+    const rolling = quarters.reduce((t, x) => t + x.amount, 0), most = Math.max(...quarters.map(x => x.amount));
+    // One quarter past the line is its own case: the CRA ends small-supplier status on the sale that crosses it.
+    const level = most > 3000000 ? "over-quarter" : rolling > 3000000 ? "over" : rolling >= 2500000 ? "near" : "ok";
+    return { quarters, rolling, level, threshold: 3000000 };
+  }
+
   const signoff = set => set.business.owner + ", " + set.business.name;
   // The payment sentence printed on the quote and used in the message.
   const termsText = (q, c) => c.deposit > 0 ? "A deposit of " + money(c.deposit) + " (" + pctText(c.depositPct) + ") is due when you accept, and the balance of " + money(c.balance) + " is due within " + q.termsDays + " business days of delivery." : "Payment is due within " + q.termsDays + " business days of delivery.";
+  // The e-Transfer price, worked out in full so the client sees every figure.
+  function etText(q) {
+    if (!(toPct(q.etPct) > 0)) return "";
+    const e = compute(q, "etransfer");
+    return "Paying by Interac e-Transfer takes " + pctText(e.etPct) + " off, for a total of " + money(e.total) + (e.deposit > 0 ? " (deposit " + money(e.deposit) + ", balance " + money(e.balance) + ")" : "") + ".";
+  }
+  const payHow = (q, set) => toPct(q.etPct) > 0 || String(set.etEmail || "").trim() ? "How to pay: Interac e-Transfer to " + (String(set.etEmail || "").trim() || set.business.email) + ", or credit card through the payment link on your invoice." : "";
   function message(q, c, set) {
     const cl = q.client, first = String(cl.name || "").trim().split(/\s+/)[0] || "there";
     const tax = c.hstOn ? ", including 13% HST" : "";
-    const dep = " " + termsText(q, c);
+    const dep = " " + termsText(q, c) + (etText(q) ? " " + etText(q) : "");
     return "Hi " + first + ", here's quote " + q.number + " for " + String(q.title).trim().replace(/\.$/, "") + ". The total is " + money(c.total) + tax + "." + dep +
       " The quote is valid until " + longDate(c.validUntil) + ". Reply to this message to accept it or to ask any questions. " + signoff(set);
   }
@@ -380,10 +510,10 @@ const QTW = (() => {
     const c = compute(q), cl = q.client, parts = String(cl.name || "").trim().split(/\s+/).filter(Boolean);
     const customer = { company: String(cl.business || "").trim(), firstName: parts[0] || "", lastName: parts.slice(1).join(" "), email: String(cl.email || "").trim(), phone: String(cl.phone || "").trim(),
       address1: String(cl.street || "").trim(), address2: "", city: String(cl.city || "").trim(), province: String(cl.province || "").trim(), postal: String(cl.postal || "").trim(), country: String(cl.country || "").trim(), currency: "CAD" };
+    // Wave has its own discount, taken off before tax, so the discount is entered there as a fixed amount, not as a line.
     const lines = c.lines.map(l => ({ desc: l.desc, qty: qtyText(l.qty), price: plain(l.price), amount: l.total }));
-    if (c.discount > 0) lines.push({ desc: "Discount (" + pctText(c.discountPct) + ")", qty: "1", price: plain(-c.discount), amount: -c.discount });
-    const notes = "Quote " + q.number + "." + (c.deposit > 0 ? " Deposit of " + money(c.deposit) + " due on acceptance. Balance of " + money(c.balance) + " due " + longDate(q.dueDate) + "." : " Payment due " + longDate(q.dueDate) + ".");
-    return { number: q.number, customer, lines, hstOn: c.hstOn, hstNumber: q.hstNumber, subtotal: c.taxable, hst: c.hst, total: c.total, deposit: c.deposit, balance: c.balance, invoiceDate: q.acceptedOn, dueDate: q.dueDate, notes };
+    const notes = "Quote " + q.number + "." + (c.method === "etransfer" ? " Paying by Interac e-Transfer, " + pctText(c.etPct) + " off included." : "") + (c.deposit > 0 ? " Deposit of " + money(c.deposit) + " due on acceptance. Balance of " + money(c.balance) + " due " + longDate(q.dueDate) + "." : " Payment due " + longDate(q.dueDate) + ".");
+    return { number: q.number, customer, lines, hstOn: c.hstOn, hstNumber: q.hstNumber, subtotal: c.subtotal, discount: c.discount + c.etDiscount, discountPct: c.discountPct, method: c.method, etPct: c.etPct, etDiscount: c.etDiscount, quoteDiscount: c.discount, taxable: c.taxable, hst: c.hst, total: c.total, deposit: c.deposit, balance: c.balance, invoiceDate: q.acceptedOn, dueDate: q.dueDate, notes };
   }
   function waveCustomerCSV(q) {
     const w = waveSheet(q); if (!w) return null; const k = w.customer;
@@ -416,7 +546,7 @@ const QTW = (() => {
     if (!b || typeof b !== "object" || !Array.isArray(b.quotes) || !b.settings || typeof b.settings !== "object") return null;
     const s = blankState(), bs = b.settings, bb = bs.business && typeof bs.business === "object" ? bs.business : {};
     s.settings = { business: { name: str(bb.name), owner: str(bb.owner), email: str(bb.email), website: str(bb.website) }, hstRegistered: bs.hstRegistered === true, hstNumber: str(bs.hstNumber, 20),
-      termsDays: str(bs.termsDays, 3), validDays: str(bs.validDays, 3), depositPct: str(bs.depositPct, 6),
+      termsDays: str(bs.termsDays, 3), validDays: str(bs.validDays, 3), depositPct: str(bs.depositPct, 6), followUpDays: isInt(str(bs.followUpDays, 2), 1, 90) ? str(bs.followUpDays, 2) : "10", quoteFollowUpDays: isInt(str(bs.quoteFollowUpDays, 2), 1, 60) ? str(bs.quoteFollowUpDays, 2) : "5", etPct: typeof bs.etPct === "string" ? str(bs.etPct, 6) : "3", etEmail: typeof bs.etEmail === "string" ? str(bs.etEmail) : str(bb.email),
       priceList: (Array.isArray(bs.priceList) ? bs.priceList : []).slice(0, 500).map(p => ({ desc: str(p && p.desc), unit: str(p && p.unit, 20), price: str(p && p.price, 15) })) };
     let maxId = 0;
     s.quotes = b.quotes.slice(0, 5000).filter(q => q && typeof q === "object").map(q => {
@@ -424,9 +554,10 @@ const QTW = (() => {
       const id = Number.isInteger(q.id) && q.id > 0 ? q.id : 0; if (id > maxId) maxId = id;
       return { id, number: /^Q-\d{4}-\d{3,}$/.test(q.number) ? q.number : "", status: STATUSES.includes(q.status) ? q.status : "sent", date: str(q.date, 10), validDays: str(q.validDays, 3), title: str(q.title),
         client: { name: str(c.name), business: str(c.business), email: str(c.email), phone: str(c.phone, 40), street: str(c.street), city: str(c.city, 100), province: str(c.province, 40), postal: str(c.postal, 12), country: str(c.country, 60) },
-        lines: (Array.isArray(q.lines) ? q.lines : []).slice(0, 500).map(l => ({ desc: str(l && l.desc), unit: str(l && l.unit, 20), qty: str(l && l.qty, 15), price: str(l && l.price, 15) })),
-        discountPct: str(q.discountPct, 6), depositPct: str(q.depositPct, 6), hstOn: q.hstOn === true, hstNumber: str(q.hstNumber, 20),
-        termsDays: isInt(str(q.termsDays, 3), 0, 60) ? str(q.termsDays, 3) : str(bs.termsDays, 3), acceptedOn: str(q.acceptedOn, 10), finishDate: str(q.finishDate, 10), dueDate: str(q.dueDate, 10), clientDeleted: q.clientDeleted === true };
+        lines: (Array.isArray(q.lines) ? q.lines : []).slice(0, 500).map(l => ({ desc: str(l && l.desc), unit: str(l && l.unit, 20), qty: str(l && l.qty, 15), price: str(l && l.price, 15) })), scopeIn: str(q.scopeIn, 2000), scopeOut: str(q.scopeOut, 2000),
+        discountPct: str(q.discountPct, 6), depositPct: str(q.depositPct, 6), etPct: str(q.etPct, 6), hstOn: q.hstOn === true, hstNumber: str(q.hstNumber, 20),
+        termsDays: isInt(str(q.termsDays, 3), 0, 60) ? str(q.termsDays, 3) : str(bs.termsDays, 3), finishedOn: str(q.finishedOn, 10), acceptedOn: str(q.acceptedOn, 10), finishDate: str(q.finishDate, 10), dueDate: str(q.dueDate, 10), payBy: q.payBy === "etransfer" ? "etransfer" : q.payBy === "card" ? "card" : "",
+        invoiceSentOn: str(q.invoiceSentOn, 10), depositFollowUpOn: str(q.depositFollowUpOn, 10), depositReceivedOn: str(q.depositReceivedOn, 10), paidOn: str(q.paidOn, 10), lastFollowUpOn: str(q.lastFollowUpOn, 10), clientDeleted: q.clientDeleted === true };
     });
     // A quote with a number is never a draft, and a quote without one always is.
     s.quotes.forEach(q => { if (!q.id) q.id = ++maxId; if (!q.number) q.status = "draft"; else if (q.status === "draft") q.status = "sent"; });
@@ -438,6 +569,9 @@ const QTW = (() => {
     s.lastBackupAt = str(b.lastBackupAt, 30); s.lastAcceptedAt = str(b.lastAcceptedAt, 30);
     return s;
   }
+  // Erasing starts the device over: no quotes, no clients, numbering back at 001. The price list and settings can be kept.
+  function eraseAll(state, keepSetup) { const s = blankState(); if (keepSetup) s.settings = clone(state.settings); return s; }
+  const eraseConfirmed = text => String(text == null ? "" : text).trim().toUpperCase() === "ERASE";
   const needsBackup = s => !!s.lastAcceptedAt && (!s.lastBackupAt || s.lastBackupAt < s.lastAcceptedAt);
 
   // One client is everyone sharing an email, or the same name and business when there is no email.
@@ -453,13 +587,13 @@ const QTW = (() => {
   function deleteClient(state, key) {
     const s = clone(state); let n = 0;
     s.quotes = s.quotes.filter(q => { if (q.clientDeleted || clientKey(q) !== key) return true; n++; if (q.status === "draft") return false;
-      q.client = blankClient(); q.client.province = ""; q.client.country = ""; q.title = "Client details deleted"; q.clientDeleted = true; return true; });
+      q.client = blankClient(); q.client.province = ""; q.client.country = ""; q.title = "Client details deleted"; q.scopeIn = ""; q.scopeOut = ""; q.clientDeleted = true; return true; });
     return { state: s, quotes: n };
   }
 
   return { APP, VERSION, KEY, HST_RATE, STATUSES, WAVE_HEAD, toCents, toMilli, toPct, mulDiv, money, plain, qtyText, pctText, addDays, isDate, longDate, addBusinessDays,
-    blankState, newQuote, compute, validate, validateSettings, validatePriceItem, syncDraft, finishQuote, copyToDraft, deleteDraft, shownStatus, setStatus, setDueDate, termsText, message, toCSV,
-    waveSheet, waveCustomerCSV, exportBackup, importBackup, loadState, needsBackup, clientKey, clients, deleteClient };
+    blankState, newQuote, compute, validate, validateSettings, validatePriceItem, syncDraft, finishQuote, copyToDraft, deleteDraft, shownStatus, setStatus, setPayBy, setDueDate, etText, payHow, markPayment, followUps, markFollowedUp, followUpMessage, followUpCalendar, hstWatch, termsText, message, toCSV,
+    waveSheet, waveCustomerCSV, exportBackup, importBackup, loadState, eraseAll, eraseConfirmed, needsBackup, clientKey, clients, deleteClient };
 })();
 /* CORE-END */
 
@@ -533,6 +667,12 @@ const QTW = (() => {
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
     return true;
   }
+  // Personal tool: on iPhone, outside links open in Chrome through Chrome's own address scheme. Elsewhere, a new tab.
+  function openOutside(url) {
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (ios && /^https:\/\//.test(url)) { window.location.href = url.replace(/^https:/, "googlechromes:"); return; }
+    window.open(url, "_blank", "noopener");
+  }
   async function backUp() {
     const r = Q.exportBackup(S, nowIso());
     if (!(await giveFile(r.name, r.text, "application/json"))) return;
@@ -542,8 +682,11 @@ const QTW = (() => {
   function drawNotice() {
     const out = [];
     if (saveFailed) out.push(h("div", { class: "notice bad" }, h("h2", null, "Your last change was not saved"), h("p", null, "This device refused to store data. Storage may be full or blocked. Back up now so nothing is lost."), btn("Back up everything", "primary", backUp)));
+    const hw = S.settings.hstRegistered ? null : Q.hstWatch(S, today());
+    if (hw && hw.level !== "ok" && /^#?\/?$/.test(location.hash)) out.push(h("div", { class: "notice" }, h("h2", null, hw.level === "near" ? "Your sales are nearing the HST line" : "Your sales may be past the HST line"),
+      h("p", null, hw.level === "over-quarter" ? "Accepted quotes in a single quarter passed $30,000 before HST. Under the CRA's single-quarter rule, small-supplier status ends on the sale that crosses the line, so check your figures in Wave and with the CRA or an accountant now." : "Accepted quotes over the last four quarters total " + Q.money(hw.rolling) + " before HST. Past $30,000 in one quarter or over four quarters, you must register for HST. Check your figures in Wave and with the CRA or an accountant."), h("a", { class: "btn", href: "#/settings" }, "See the quarters in Settings")));
     if (damaged) out.push(h("div", { class: "notice bad" }, h("h2", null, "The saved data on this device could not be read"), h("p", null, "The tool has started empty. If you have a backup file, restore it in Settings."), h("a", { class: "btn", href: "#/settings" }, "Open Settings")));
-    if (!saveFailed && Q.needsBackup(S) && /^#?\/?$/.test(location.hash)) out.push(h("div", { class: "notice" }, h("h2", null, "Back up your quotes"), h("p", null, "A quote has been accepted since your last backup. iPhone can clear a web app's saved data, so keep a copy."), btn("Back up everything", "primary", backUp)));
+    if (!saveFailed && Q.needsBackup(S) && /^#?\/?$/.test(location.hash)) out.push(h("div", { class: "notice" }, h("h2", null, "Back up your quotes"), h("p", null, "A quote was accepted or a payment was marked since your last backup. iPhone can clear a web app's saved data, so keep a copy."), btn("Back up everything", "primary", backUp)));
     noticeBox.replaceChildren(...out);
   }
 
@@ -555,6 +698,7 @@ const QTW = (() => {
     return h("label", { class: "f" }, h("span", null, label, hint ? h("span", { class: "hint" }, " " + hint) : null), input, e);
   }
   const input = (value, oninput, attrs) => { const el = h("input", Object.assign({ class: "in", type: "text", autocomplete: "off" }, attrs || {})); el.value = value == null ? "" : value; el.addEventListener("input", () => oninput(el.value)); return el; };
+  const textarea = (value, oninput, attrs) => { const el = h("textarea", Object.assign({ class: "in", rows: "3" }, attrs || {})); el.value = value == null ? "" : value; el.addEventListener("input", () => oninput(el.value)); return el; };
   const select = (options, value, onchange, attrs) => { const el = h("select", Object.assign({ class: "in" }, attrs || {}), options.map(o => h("option", { value: o[0] }, o[1]))); el.value = value; el.addEventListener("change", () => onchange(el.value, el)); return el; };
   function showErrors(errs, found) {
     for (const k in errs) { const on = k in found; errs[k].e.hidden = !on; errs[k].e.textContent = on ? found[k] : ""; if (on) errs[k].input.setAttribute("aria-invalid", "true"); else errs[k].input.removeAttribute("aria-invalid"); }
@@ -564,6 +708,7 @@ const QTW = (() => {
     return h("div", { class: "totals" },
       row("Subtotal", Q.money(c.subtotal)),
       c.discount > 0 ? row("Discount (" + Q.pctText(c.discountPct) + ")", Q.money(-c.discount)) : null,
+      c.etDiscount > 0 ? row("e-Transfer discount (" + Q.pctText(c.etPct) + ")", Q.money(-c.etDiscount)) : null,
       c.hstOn ? row("HST (13%)", Q.money(c.hst)) : null,
       row("Total", Q.money(c.total), "grand"),
       c.deposit > 0 ? row("Deposit on acceptance (" + Q.pctText(c.depositPct) + ")", Q.money(c.deposit)) : null,
@@ -582,7 +727,18 @@ const QTW = (() => {
       h("p", { class: "lede" }, "No quotes yet. Build a quote, send it, and when the client accepts you get everything laid out to enter in Wave."),
       h("div", { class: "section actions" }, start, S.settings.priceList.length ? null : h("a", { class: "btn", href: "#/prices" }, "Set up your price list first")),
       h("p", { class: "section muted" }, "Everything you enter stays on this device. This page cannot send it anywhere."));
-    page(false, head("Quotes"), h("div", { class: "section actions" }, start),
+    const due = Q.followUps(S, today());
+    const dueBox = due.length ? h("section", { class: "section" }, h("h2", null, "Follow up today"), h("ul", { class: "qlist" }, due.map(f => {
+      const q = find(f.id), msg = Q.followUpMessage(q, f, S.settings);
+      const copy = btn("Copy the message", "primary", () => copyText(msg, copy, "Copy the message"));
+      const what = f.kind === "quote" ? "No answer yet on this " + Q.money(f.amount) + " quote. Follow-up due since " + Q.longDate(f.since) + "." : f.kind === "deposit" ? "Deposit of " + Q.money(f.amount) + " not received. Follow-up due since " + Q.longDate(f.since) + "." : (f.depositOwed ? "Nothing received. " : "") + Q.money(f.amount) + " overdue since " + Q.longDate(f.since) + ".";
+      const days = f.kind === "quote" ? S.settings.quoteFollowUpDays : S.settings.followUpDays;
+      const snooze = btn("Remind me again in " + days + " days", "", () => { const prev = q.lastFollowUpOn; const r = Q.markFollowedUp(S, q.id, today()); if (!r.ok) return; commit(r.state); route(); toast("Put away for " + days + " days.", () => { const u = JSON.parse(JSON.stringify(S)); u.quotes.find(x => x.id === q.id).lastFollowUpOn = prev; commit(u); route(); }); });
+      return h("li", null, h("div", { class: "card due" }, h("div", { class: "qrow-top" }, h("strong", null, q.number), h("span", null, who(q))), h("p", null, what), copy,
+        f.kind === "quote" ? null : f.kind === "deposit" ? btn("Mark deposit received", "", () => markPay(q, "depositReceived", today(), "Deposit marked as received today.")) : btn("Mark paid in full", "", () => markPay(q, "paid", today(), "Marked as paid in full today.")), snooze,
+        h("a", { class: "btn quiet", href: "#/q/" + q.id }, "Open " + q.number)));
+    }))) : null;
+    page(false, head("Quotes"), dueBox, h("div", { class: "section actions" }, start),
       h("ul", { class: "qlist section" }, list.map(q => { const c = Q.compute(q); return h("li", null, h("a", { class: "qrow", href: "#/q/" + q.id },
         h("span", { class: "qrow-top" }, h("strong", null, q.number || "Draft"), chip(q)),
         h("span", { class: "qrow-bot" }, h("span", null, who(q) + (q.title && !q.clientDeleted ? ", " + q.title : "")), h("span", { class: "num" }, Q.money(c.total))))); })));
@@ -596,8 +752,8 @@ const QTW = (() => {
     let lineTotals = [];
     const changed = () => { save(); recalc(); };
     function recalc() {
-      const c = Q.compute(q);
-      totals.replaceChildren(totalsBox(c));
+      const c = Q.compute(q), et = Q.etText(q);
+      totals.replaceChildren(...[totalsBox(c), et ? h("p", { class: "muted" }, "These are card prices. " + et) : null].filter(Boolean));
       c.lines.forEach((l, i) => { if (lineTotals[i]) lineTotals[i].textContent = l.total === null ? "" : "Line total " + Q.money(l.total); });
       if (!showErr) return;
       const found = Q.validate(q, today());
@@ -644,6 +800,9 @@ const QTW = (() => {
         set.priceList.length ? h("label", { class: "f" }, h("span", null, "Add from your price list"), select(priceOpts, "", (v, el) => { if (v === "") return; const p = set.priceList[Number(v)]; el.value = ""; addLine({ desc: p.desc, unit: p.unit, qty: "1", price: p.price }); }))
           : h("p", { class: "muted" }, "Your price list is empty. ", h("a", { href: "#/prices" }, "Add your services"), " to pick them here."),
         btn("Add a blank line", "", () => addLine({ desc: "", unit: "each", qty: "1", price: "" }))),
+      h("section", { class: "section" }, h("h2", null, "Scope"), h("p", { class: "muted" }, "Both print on the quote, so the client agrees to what the price covers."),
+        field("What's included", textarea(q.scopeIn, v => { q.scopeIn = v; changed(); }, { maxlength: 2000 }), errs, "scopeIn", "(optional)"),
+        field("What's not included", textarea(q.scopeOut, v => { q.scopeOut = v; changed(); }, { maxlength: 2000 }), errs, "scopeOut", "(optional)")),
       h("section", { class: "section" }, h("h2", null, "Discount and deposit"),
         h("div", { class: "grid2" },
           field("Discount %", input(q.discountPct, v => { q.discountPct = v; changed(); }, { inputmode: "decimal", maxlength: 6 }), errs, "discount"),
@@ -669,7 +828,7 @@ const QTW = (() => {
 
   // --- the printable quote
   function sheet(q) {
-    const c = Q.compute(q), b = S.settings.business, cl = q.client;
+    const c = Q.compute(q, "card"), b = S.settings.business, cl = q.client;
     const has = x => String(x || "").trim() !== "";
     const addr = has(cl.street) || has(cl.city) || has(cl.postal) ? [cl.street, [cl.city, cl.province].filter(has).join(", "), cl.postal].map(x => String(x || "").trim()).filter(Boolean) : [];
     const lines = (...xs) => xs.filter(x => String(x || "").trim()).map(x => h("p", null, x));
@@ -682,33 +841,83 @@ const QTW = (() => {
       h("table", { class: "sheet-lines" }, h("thead", null, h("tr", null, h("th", { scope: "col" }, "Item"), h("th", { scope: "col", class: "r" }, "Amount"))),
         h("tbody", null, c.lines.map(l => h("tr", null, h("td", null, l.desc, h("span", { class: "sub num" }, Q.qtyText(l.qty) + " " + l.unit + " at " + Q.money(l.price))), h("td", { class: "r num" }, Q.money(l.total)))))),
       totalsBox(c),
+      String(q.scopeIn || "").trim() || String(q.scopeOut || "").trim() ? h("div", { class: "scope" },
+        String(q.scopeIn || "").trim() ? h("div", null, h("p", { class: "lbl" }, "Included"), h("p", { class: "msg" }, q.scopeIn.trim())) : null,
+        String(q.scopeOut || "").trim() ? h("div", null, h("p", { class: "lbl" }, "Not included"), h("p", { class: "msg" }, q.scopeOut.trim())) : null,
+        h("p", { class: "muted" }, "Work outside this scope is quoted separately before it starts.")) : null,
+      Q.etText(q) || Q.payHow(q, S.settings) ? h("div", { class: "pay-how" }, Q.etText(q) ? h("p", null, h("strong", null, Q.etText(q))) : null, Q.payHow(q, S.settings) ? h("p", null, Q.payHow(q, S.settings)) : null) : null,
       h("div", { class: "sheet-foot" }, h("p", null, Q.termsText(q, c)), h("p", null, "This quote is valid until " + Q.longDate(c.validUntil) + ". To accept it, reply to " + b.email + ".")));
+  }
+
+  // --- invoice and payments, on the accepted quote and at the end of Ready for Wave
+  function markPay(q, which, date, done) {
+    const r = Q.markPayment(S, q.id, which, date, { today: today(), now: nowIso() });
+    if (!r.ok) return r;
+    commit(r.state); route(); if (done) toast(done, () => { const u = Q.markPayment(S, q.id, which, "", { today: today(), now: nowIso() }); if (u.ok) { commit(u.state); route(); } });
+    return r;
+  }
+  function payCard(q) {
+    const c = Q.compute(q), card = h("div", { class: "card" });
+    const dateMark = (which, label, button, hint, done) => {
+      const errs = {}, d = h("input", { class: "in", type: "date", min: q.acceptedOn, max: today() }); d.value = today();
+      return [field(label, d, errs, which, hint), btn(button, "primary", () => { const r = markPay(q, which, d.value, done); if (!r.ok) { showErrors(errs, r.errors); d.focus(); } })];
+    };
+    const doneRow = (text, which) => h("div", { class: "pay-row" }, h("span", null, text), btn("Undo", "quiet", () => { const r = markPay(q, which, ""); if (!r.ok) toast(r.errors[which]); }, { "aria-label": "Undo: " + text }));
+    const methodRow = () => {
+      if (!(Q.toPct(q.etPct) > 0)) return null;
+      const other = q.payBy === "etransfer" ? "card" : "etransfer", name = m => m === "etransfer" ? "Interac e-Transfer" : "credit card";
+      return h("div", { class: "pay-row" }, h("span", null, "Paying by " + name(q.payBy) + ", " + Q.money(c.total) + "."), q.invoiceSentOn ? null : btn("Switch to " + (other === "etransfer" ? "e-Transfer" : "card"), "quiet", () => { const r = Q.setPayBy(S, q.id, other); if (r.ok) { commit(r.state); route(); toast("Now paying by " + name(other) + ": " + Q.money(Q.compute(q, other).total) + "."); } }));
+    };
+    if (!q.invoiceSentOn) {
+      card.append(...[h("h2", null, "Mark the invoice as sent"), methodRow(), h("p", { class: "muted" }, "Once the invoice has gone out from Wave, mark it here. That starts the follow-ups: the deposit after " + S.settings.followUpDays + " days if it hasn't arrived, and the payment the day after it falls due."),
+        ...dateMark("invoiceSent", "Date the invoice was sent", "Mark invoice as sent", null, "Invoice marked as sent.")].filter(Boolean));
+      return card;
+    }
+    card.append(...[h("h2", null, "Invoice and payments"), methodRow(), doneRow("Invoice sent " + Q.longDate(q.invoiceSentOn) + ".", "invoiceSent")].filter(Boolean));
+    if (c.deposit > 0) {
+      if (q.depositReceivedOn) card.append(doneRow("Deposit of " + Q.money(c.deposit) + " received " + Q.longDate(q.depositReceivedOn) + ".", "depositReceived"));
+      else if (!q.paidOn) card.append(h("p", null, "Deposit of " + Q.money(c.deposit) + " not received yet. Follow-up on " + Q.longDate(q.depositFollowUpOn) + "."), ...dateMark("depositReceived", "Date the deposit arrived", "Mark deposit received", null, "Deposit marked as received."));
+    }
+    if (q.paidOn) card.append(doneRow("Paid in full " + Q.longDate(q.paidOn) + ".", "paid"));
+    else card.append(h("p", null, (c.deposit > 0 ? "Balance" : "Payment") + " due " + Q.longDate(q.dueDate) + ". Follow-up the day after if it hasn't arrived."), ...dateMark("paid", "Date the full payment arrived", "Mark paid in full", null, "Marked as paid in full."));
+    if (!q.paidOn) card.append(btn("Add to my calendar", "", () => giveFile("follow-ups-" + q.number + ".ics", Q.followUpCalendar(q, nowIso()), "text/calendar")),
+      h("p", { class: "muted" }, "Adds a reminder on each follow-up date. The reminders name only the quote number, so no client details go into a calendar that syncs to iCloud or Google."));
+    return card;
   }
 
   // --- a finished quote
   function drawView(q) {
-    const c = Q.compute(q), st = Q.shownStatus(q, today()), msg = Q.message(q, c, S.settings);
-    const print = btn("Print or save as PDF", st === "accepted" ? "" : "primary", () => { const t = document.title; document.title = "Quote " + q.number; window.print(); document.title = t; });
+    const c = Q.compute(q), st = Q.shownStatus(q, today()), msg = Q.message(q, Q.compute(q, "card"), S.settings);
+    const print = btn("Print or save as PDF", st === "accepted" || st === "paid" ? "" : "primary", () => { const t = document.title; document.title = "Quote " + q.number; window.print(); document.title = t; });
     const copyMsg = btn("Copy the message to send", "", () => copyText(msg, copyMsg, "Copy the message to send"));
     const copyNew = btn("Copy to a new draft", "quiet", () => { const r = Q.copyToDraft(S, q.id, today()); if (!r.ok) return; commit(r.state); go("#/q/" + r.id); toast("New draft made from " + q.number + ". The original is unchanged."); });
     const acts = [];
     if (q.clientDeleted) acts.push(print);
-    else if (st === "accepted") acts.push(h("a", { class: "btn primary", href: "#/q/" + q.id + "/wave" }, "Open Ready for Wave"), print, copyMsg,
-      btn("Undo the acceptance", "quiet", () => { const r = Q.setStatus(S, q.id, "sent", {}); if (r.ok) { commit(r.state); route(); toast("Back to sent."); } }), copyNew);
+    else if (st === "accepted" || st === "paid") acts.push(payCard(q), h("a", { class: "btn" + (q.invoiceSentOn ? "" : " primary"), href: "#/q/" + q.id + "/wave" }, "Open Ready for Wave"), print, copyMsg,
+      q.invoiceSentOn ? null : btn("Undo the acceptance", "quiet", () => { const r = Q.setStatus(S, q.id, "sent", {}); if (r.ok) { commit(r.state); route(); toast("Back to sent."); } }), copyNew);
     else if (st === "declined") acts.push(btn("Reopen this quote", "", () => { const r = Q.setStatus(S, q.id, "sent", {}); if (r.ok) { commit(r.state); route(); } }), print, copyNew);
     else {
       const errs = {}, date = h("input", { class: "in", type: "date", min: today() }), box = h("div", { class: "card", hidden: true });
-      box.append(h("h2", null, "Mark " + q.number + " as accepted"),
+      const offered = Q.toPct(q.etPct) > 0, cardC = Q.compute(q, "card"), etC = Q.compute(q, "etransfer");
+      const radio = (value, label) => { const r = h("input", { type: "radio", name: "payBy-" + q.id, value }); return h("label", { class: "check" }, r, h("span", null, label)); };
+      const payErr = h("p", { class: "err", id: "e-payBy", hidden: true, role: "alert" });
+      const payBox = offered ? h("fieldset", { class: "pay-choice", "aria-describedby": "e-payBy" }, h("legend", null, "How will the client pay?"),
+        radio("card", "Credit card, " + Q.money(cardC.total)), radio("etransfer", "Interac e-Transfer, " + Q.money(etC.total)), payErr) : null;
+      box.append(...[h("h2", null, "Mark " + q.number + " as accepted"), payBox,
         field("When do you expect to finish the work?", date, errs, "finishDate", "The balance is due " + q.termsDays + " business days after this date. Accepting opens Ready for Wave."),
-        btn("Accept this quote", "primary", () => { const r = Q.setStatus(S, q.id, "accepted", { today: today(), now: nowIso(), finishDate: date.value }); if (!r.ok) { showErrors(errs, r.errors); date.focus(); return; } commit(r.state); go("#/q/" + q.id + "/wave"); }),
-        btn("Cancel", "quiet", () => { box.hidden = true; open.hidden = false; open.focus(); }));
+        btn("Accept this quote", "primary", () => {
+          const pick = box.querySelector('input[type="radio"]:checked'), payBy = offered ? (pick ? pick.value : "") : "card";
+          const r = Q.setStatus(S, q.id, "accepted", { today: today(), now: nowIso(), finishDate: date.value, payBy });
+          if (!r.ok) { showErrors(errs, r.errors); payErr.hidden = !r.errors.payBy; payErr.textContent = r.errors.payBy || ""; (r.errors.payBy ? box.querySelector('input[type="radio"]') : date).focus(); return; }
+          commit(r.state); go("#/q/" + q.id + "/wave"); }),
+        btn("Cancel", "quiet", () => { box.hidden = true; open.hidden = false; open.focus(); })].filter(Boolean));
       const open = btn("Mark as accepted", "", () => { box.hidden = false; open.hidden = true; date.focus(); });
       acts.push(print, copyMsg, open, box,
         btn("Mark as declined", "", () => { const r = Q.setStatus(S, q.id, "declined", {}); if (r.ok) { commit(r.state); route(); toast("Marked as declined.", () => { const u = Q.setStatus(S, q.id, "sent", {}); if (u.ok) { commit(u.state); route(); } }); } }), copyNew);
     }
     page(true, backLink(), h("div", { class: "noprint" }, head("Quote " + q.number, chip(q)),
-      h("p", { class: "lede" }, st === "expired" ? "The valid-until date has passed. You can still mark it accepted if the client says yes." : st === "accepted" ? "Accepted on " + Q.longDate(q.acceptedOn) + ". This quote is locked." : "This quote is locked. To change it, copy it to a new draft.")),
-      h("div", { class: "section actions noprint" }, acts),
+      h("p", { class: "lede" }, st === "expired" ? "The valid-until date has passed. You can still mark it accepted if the client says yes." : st === "paid" ? "Accepted on " + Q.longDate(q.acceptedOn) + " and paid in full on " + Q.longDate(q.paidOn) + "." : st === "accepted" ? "Accepted on " + Q.longDate(q.acceptedOn) + ". This quote is locked." : "This quote is locked. To change it, copy it to a new draft.")),
+      h("div", { class: "section actions noprint" }, acts.filter(Boolean)),
       h("div", { class: "section" }, sheet(q)),
       q.clientDeleted ? null : h("section", { class: "section noprint" }, h("h2", null, "Message to send with it"), h("p", { class: "card msg" }, msg)),
       q.clientDeleted ? null : h("div", { class: "section actions noprint" }, btn("Delete this client's data", "quiet danger", () => { delKey = Q.clientKey(q); go("#/settings"); })));
@@ -722,20 +931,24 @@ const QTW = (() => {
     due.addEventListener("change", () => { const r = Q.setDueDate(S, q.id, due.value); if (!r.ok) { showErrors(errs, r.errors); return; } commit(r.state); route(); toast("Due date changed."); });
     const step = (title, ...kids) => h("section", { class: "section step" }, h("h2", null, title), ...kids);
     page(true, h("a", { class: "back", href: "#/q/" + q.id }, "Back to quote " + q.number), head("Ready for Wave"),
-      h("p", { class: "lede" }, "Quote " + q.number + " for " + who(q) + ". Work down this page with Wave open. Each Copy button puts one value on your clipboard."),
+      h("p", { class: "lede" }, "Quote " + q.number + " for " + who(q) + ". Work down this page with the Wave app or website open. Each Copy button puts one value on your clipboard."),
+      h("div", { class: "section actions" }, h("a", { class: "btn", href: "https://www.waveapps.com/", rel: "noopener noreferrer", onclick: e => { e.preventDefault(); openOutside("https://www.waveapps.com/"); } }, "Open the Wave website"),
+        h("p", { class: "muted" }, "To use the Wave app instead, switch to it yourself. Wave doesn't offer a way for a web page to open its app.")),
       h("div", { class: "steps" },
         step("Add the customer in Wave", h("div", { class: "card" }, row("Company name", k.company), row("First name", k.firstName), row("Last name", k.lastName), row("Email", k.email), row("Phone", k.phone), row("Address", k.address1), row("City", k.city), row("Province", k.province), row("Postal code", k.postal), row("Country", k.country), row("Currency", k.currency)),
           btn("Download the customer file for Wave", "", () => giveFile("wave-customer-" + q.number + ".csv", Q.waveCustomerCSV(q), "text/csv")),
-          h("p", { class: "muted" }, "The file is for Wave's Import from CSV on the Customers page of waveapps.com. Wave's file has no province column, so set the province in Wave after importing. If this client is already in Wave, skip this step.")),
+          h("p", { class: "muted" }, "Importing the file works on the Wave website only: Customers, then Import from CSV. Wave's file has no province column, so set the province after importing. In the app, add the customer with the Copy buttons. If this client is already in Wave, skip this step.")),
         step("Start a new invoice", h("div", { class: "card" }, row("Invoice date", w.invoiceDate, Q.longDate(w.invoiceDate)), row("Payment due", w.dueDate, Q.longDate(w.dueDate)), row("P.O. or reference", w.number)),
           field("Change the due date", due, errs, "dueDate", "It starts at " + q.termsDays + " business days after " + Q.longDate(q.finishDate) + ", your finish date.")),
-        step("Add each line item", ...w.lines.map((l, i) => h("div", { class: "card" }, h("h3", null, "Line " + (i + 1)), row("Description", l.desc), row("Quantity", l.qty), row("Price", l.price), h("p", { class: "muted num" }, "Line amount " + Q.money(l.amount)))),
-          w.lines.some(l => l.amount < 0) ? h("p", { class: "muted" }, "The discount goes in as its own line with a negative price.") : null),
-        step("Check Wave's totals against the quote", h("div", { class: "totals" }, h("div", null, h("span", null, "Subtotal"), h("span", { class: "num" }, Q.money(w.subtotal))), w.hstOn ? h("div", null, h("span", null, "HST (13%)"), h("span", { class: "num" }, Q.money(w.hst))) : null, h("div", { class: "grand" }, h("span", null, "Total"), h("span", { class: "num" }, Q.money(w.total)))),
-          h("p", { class: "muted" }, w.hstOn ? "Apply your HST tax to every line, including the discount line. Wave works the tax out itself, so if its total differs from the one here, stop and check the lines before sending." : "Do not add a tax to any line. The quote charged no HST.")),
+        step("Add each line item", ...w.lines.map((l, i) => h("div", { class: "card" }, h("h3", null, "Line " + (i + 1)), row("Description", l.desc), row("Quantity", l.qty), row("Price", l.price), h("p", { class: "muted num" }, "Line amount " + Q.money(l.amount))))),
+        w.discount > 0 ? step("Add the discount", h("div", { class: "card" }, row("Discount amount", Q.plain(w.discount), Q.money(w.discount))),
+          h("p", { class: "muted" }, "Tap Add discount below the subtotal, choose a dollar amount rather than a percentage, and enter this figure. It is " + [w.quoteDiscount > 0 ? "the quote's " + Q.pctText(w.discountPct) + " discount (" + Q.money(w.quoteDiscount) + ")" : "", w.etDiscount > 0 ? "the " + Q.pctText(w.etPct) + " e-Transfer discount (" + Q.money(w.etDiscount) + ")" : ""].filter(Boolean).join(" plus ") + ", to the cent. Wave allows one discount per invoice and takes it off before tax, the same as the quote.")) : null,
+        step("Check Wave's totals against the quote", h("div", { class: "totals" }, h("div", null, h("span", null, "Subtotal"), h("span", { class: "num" }, Q.money(w.subtotal))), w.discount > 0 ? h("div", null, h("span", null, "Discount"), h("span", { class: "num" }, Q.money(-w.discount))) : null, w.hstOn ? h("div", null, h("span", null, "HST (13%)"), h("span", { class: "num" }, Q.money(w.hst))) : null, h("div", { class: "grand" }, h("span", null, "Total"), h("span", { class: "num" }, Q.money(w.total)))),
+          h("p", { class: "muted" }, w.hstOn ? "Apply your HST tax to every line. Wave works the tax out itself, so if its total differs from the one here, stop and check the lines before sending." : "Do not add a tax to any line. The quote charged no HST.")),
         step("Add the notes", h("div", { class: "card" }, row("Notes", w.notes))),
         step(w.deposit > 0 ? "Record the deposit when it arrives" : "Record the payment when it arrives", h("div", { class: "card" }, w.deposit > 0 ? row("Deposit amount", Q.plain(w.deposit), Q.money(w.deposit)) : null, row(w.deposit > 0 ? "Balance left after the deposit" : "Amount", Q.plain(w.balance), Q.money(w.balance))),
-          w.deposit > 0 ? h("p", { class: "muted" }, "In Wave, open the invoice, choose Record a payment and change the amount to the deposit. The invoice then shows the balance as still due.") : null)),
+          w.deposit > 0 ? h("p", { class: "muted" }, "Open the invoice, choose Record a payment and change the amount to the deposit. The invoice then shows the balance as still due. Wave's help describes this on the website. If the app doesn't offer it, record the deposit there.") : null),
+        step(q.invoiceSentOn ? "Track the payments" : "Mark the invoice as sent", payCard(q))),
       h("section", { class: "section" }, h("h2", null, "Keep a copy"), h("p", null, Q.needsBackup(S) ? "This accepted quote is not in a backup yet." : "Your last backup already includes this quote."), btn("Back up everything", Q.needsBackup(S) ? "primary" : "", backUp)));
   }
 
@@ -759,6 +972,15 @@ const QTW = (() => {
       h("div", { class: "section" }, form({ desc: "", unit: "each", price: "" }, -1)));
   }
 
+  // --- HST threshold watch: an early warning while not registered
+  function watchCard() {
+    const w = Q.hstWatch(S, today());
+    return h("div", { class: "card" + (w.level === "ok" ? "" : " due") }, h("h3", null, "Small supplier watch"),
+      h("p", null, "Accepted quotes over the last four quarters, before HST: " + Q.money(w.rolling) + " of the " + Q.money(w.threshold) + " line."),
+      h("div", { class: "totals" }, w.quarters.map(x => h("div", null, h("span", null, x.label), h("span", { class: "num" }, Q.money(x.amount))))),
+      h("p", { class: "muted" }, "The CRA's test is taxable revenue over $30,000 in one calendar quarter, or over four consecutive calendar quarters. It is not a calendar or fiscal year. This counts accepted quotes, not money received, so it is an early warning only. Wave's sales figures are the real record."));
+  }
+
   // --- settings
   function drawSettings() {
     const set = S.settings, b = set.business, errs = {};
@@ -766,7 +988,30 @@ const QTW = (() => {
     const hstNum = field("HST registration number", input(set.hstNumber, guarded("hstNumber", (s, v) => { s.hstNumber = v; }), { maxlength: 20, autocapitalize: "characters" }), errs, "hstNumber", "Like 123456789 RT0001.");
     hstNum.hidden = !set.hstRegistered;
     const hst = h("input", { type: "checkbox" }); hst.checked = set.hstRegistered;
-    hst.addEventListener("change", () => { set.hstRegistered = hst.checked; save(); hstNum.hidden = !hst.checked; showErrors(errs, Q.validateSettings(set)); toast(hst.checked ? "New quotes will add 13% HST." : "New quotes will not charge HST."); });
+    hst.addEventListener("change", () => { set.hstRegistered = hst.checked; save(); const y = window.scrollY; drawSettings(); window.scrollTo(0, y); const again = main.querySelector('.check input[type="checkbox"]'); if (again) again.focus({ preventScroll: true }); toast(hst.checked ? "New quotes will add 13% HST." : "New quotes will not charge HST."); });
+    const eraseBox = h("div", { class: "stack" });
+    function drawErase() {
+      const keep = h("input", { type: "checkbox" }); keep.checked = true;
+      const go1 = btn("Erase all quotes and clients", "danger", () => {
+        const errs = {}, typed = input("", () => {}, { autocapitalize: "characters", maxlength: 10 });
+        eraseBox.replaceChildren(
+          h("p", null, keep.checked ? "This deletes every quote and every client's details on this device. Your price list and settings stay." : "This deletes every quote, every client's details, your price list and your settings on this device."),
+          h("p", null, "Quote numbering restarts at 001. It cannot be undone, so back up first if you might want any of it. Don't restore a backup made before erasing: it brings the old quotes and numbers back."),
+          field("Type ERASE to confirm", typed, errs, "erase"),
+          btn("Erase now", "danger primary", () => {
+            if (!Q.eraseConfirmed(typed.value)) { showErrors(errs, { erase: "Type ERASE in the box to confirm." }); typed.focus(); return; }
+            commit(Q.eraseAll(S, keep.checked)); damaged = false;
+            try { localStorage.removeItem(Q.KEY + ":damaged"); } catch (e) { /* nothing more can be done */ }
+            go("#/"); toast("Erased. The next finished quote will be Q-" + today().slice(0, 4) + "-001.");
+          }),
+          btn("Cancel", "quiet", drawErase));
+        typed.focus();
+      });
+      keep.addEventListener("change", () => { go1.textContent = keep.checked ? "Erase all quotes and clients" : "Erase everything"; });
+      eraseBox.replaceChildren(h("p", { class: "muted" }, "For clearing out test quotes before real use, or before giving this device to someone else."),
+        h("label", { class: "check" }, keep, h("span", null, "Keep my price list and settings")), go1);
+    }
+    drawErase();
     const people = Q.clients(S), fileIn = h("input", { type: "file", accept: ".json", class: "in" }), restoreBox = h("div", { class: "stack" }), delBox = h("div", { class: "stack" });
     fileIn.addEventListener("change", async () => {
       const f = fileIn.files[0]; if (!f) return; let text = ""; try { text = await f.text(); } catch (e) { text = ""; }
@@ -780,9 +1025,9 @@ const QTW = (() => {
       const cur = people.find(p => p.key === delKey);
       const sel = select([["", "Choose a client"]].concat(people.map(p => [p.key, (p.client.business || p.client.name || p.client.email) + " (" + p.quotes + (p.quotes === 1 ? " quote)" : " quotes)")])), cur ? delKey : "", v => { delKey = v; drawDel(); });
       const name = cur ? (cur.client.name || cur.client.business || cur.client.email) : "";
-      delBox.replaceChildren(h("label", { class: "f" }, h("span", null, "Client"), sel),
+      delBox.replaceChildren(...[h("label", { class: "f" }, h("span", null, "Client"), sel),
         cur ? h("p", null, "This removes the name, business, email, phone and address of " + name + " from " + cur.quotes + (cur.quotes === 1 ? " quote" : " quotes") + ", and deletes any of their drafts. Quote numbers, line items and totals stay so your numbering has no gaps. It cannot be undone, and backup files you already made still contain the details.") : null,
-        cur ? btn("Delete this client's data", "danger primary", () => { const r = Q.deleteClient(S, delKey); delKey = ""; commit(r.state); drawSettings(); toast("Client details deleted from " + r.quotes + (r.quotes === 1 ? " quote." : " quotes.")); }) : null);
+        cur ? btn("Delete this client's data", "danger primary", () => { const r = Q.deleteClient(S, delKey); delKey = ""; commit(r.state); drawSettings(); toast("Client details deleted from " + r.quotes + (r.quotes === 1 ? " quote." : " quotes.")); }) : null].filter(Boolean));
     }
     page(false, head("Settings"),
       h("section", { class: "section" }, h("h2", null, "Your business"), h("p", { class: "muted" }, "Shown on every quote."),
@@ -792,10 +1037,15 @@ const QTW = (() => {
         field("Website", input(b.website, v => { b.website = v.trim(); save(); }, { inputmode: "url", autocapitalize: "none", maxlength: 300 }), null, "website")),
       h("section", { class: "section" }, h("h2", null, "HST"),
         h("label", { class: "check" }, hst, h("span", null, "Registered for HST")), hstNum,
+        set.hstRegistered ? null : watchCard(),
         h("p", { class: "muted" }, "Off: quotes charge no HST. On: new quotes add 13% once, on the subtotal after any discount, and show your registration number. Quotes you already finished keep the HST they had. This is not tax advice. Check with the CRA or an accountant about when you must register.")),
       h("section", { class: "section" }, h("h2", null, "Defaults for new quotes"),
         field("Balance due, in business days after delivery", input(set.termsDays, guarded("termsDays", (s, v) => { s.termsDays = v; }), { inputmode: "numeric", maxlength: 2 }), errs, "termsDays", "Weekends are skipped. Public holidays are not."),
         field("Quotes are valid for how many days?", input(set.validDays, guarded("validDays", (s, v) => { s.validDays = v; }), { inputmode: "numeric", maxlength: 3 }), errs, "validDays"),
+        field("Follow up on an unanswered quote after how many days?", input(set.quoteFollowUpDays, guarded("quoteFollowUpDays", (s, v) => { s.quoteFollowUpDays = v; }), { inputmode: "numeric", maxlength: 2 }), errs, "quoteFollowUpDays", "Counted from the day you finish the quote."),
+        field("Follow up on an unpaid deposit after how many days?", input(set.followUpDays, guarded("followUpDays", (s, v) => { s.followUpDays = v; }), { inputmode: "numeric", maxlength: 2 }), errs, "followUpDays", "Counted from the day you mark the invoice as sent."),
+        field("Discount for paying by Interac e-Transfer, %", input(set.etPct, guarded("etPct", (s, v) => { s.etPct = v; }), { inputmode: "decimal", maxlength: 4 }), errs, "etPct", "Your price list holds card prices. 0 turns the discount off."),
+        field("Email for e-Transfers", input(set.etEmail, guarded("etEmail", (s, v) => { s.etEmail = v; }), { type: "email", autocapitalize: "none", maxlength: 300 }), errs, "etEmail", "Printed on quotes under How to pay."),
         field("Usual deposit %", input(set.depositPct, guarded("depositPct", (s, v) => { s.depositPct = v; }), { inputmode: "decimal", maxlength: 6 }), errs, "depositPct", "(leave empty for none)")),
       h("section", { class: "section" }, h("h2", null, "Back up and restore"),
         h("p", null, set.priceList.length || S.quotes.length ? (S.lastBackupAt ? "Last backup: " + Q.longDate(S.lastBackupAt.slice(0, 10)) + "." : "You have not made a backup yet.") : "Nothing to back up yet."),
@@ -803,11 +1053,13 @@ const QTW = (() => {
         h("p", { class: "muted" }, "One file with your quotes, clients, price list and settings. iPhone can clear a web app's saved data, and removing the Home Screen icon deletes it, so back up after each accepted quote."),
         h("label", { class: "f" }, h("span", null, "Restore from backup"), fileIn), restoreBox),
       h("section", { class: "section" }, h("h2", null, "Delete a client's data"), delBox),
+      h("section", { class: "section" }, h("h2", null, "Erase and start over"), eraseBox),
       h("section", { class: "section" }, h("h2", null, "Where your data is, and what protects it"),
         h("p", null, "Everything stays on this device, in this browser's storage for this address. This page cannot send data anywhere: its security policy blocks every network request."),
         h("p", null, "What protects it: your phone's lock. Anyone who can unlock this phone can open this tool and read it."),
         h("p", null, "What does not: the tool has no password of its own, the saved data is not encrypted, and neither are backup files. Treat a backup file like a client list.")));
     drawDel();
+    const missing = Q.validateSettings(set).hstNumber; if (missing) showErrors(errs, { hstNumber: missing });
     if (delKey) delBox.scrollIntoView();
   }
 
